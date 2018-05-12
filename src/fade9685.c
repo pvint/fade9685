@@ -64,7 +64,7 @@ void intHandler(int dummy) {
 int main(int argc, char **argv) {
 	_PCA9685_DEBUG = 1;
 	_PCA9685_MODE1 = 0x00 | _PCA9685_ALLCALLBIT;
-	int c, ret, fd;
+	int opt, ret, fd;
 	unsigned int onVal = 0;
 	unsigned int offVal = 0;
 	unsigned int channel = 0;	// Channel register is channel * 4 + 6
@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
 
 	static struct option long_options[] = 
 	{
-		{ "frequency", required_argument, 0, 'f' },
+		{ "frequency", 1, 0, 'f' },
 		{ "dutycycle", required_argument, 0, 'd' },
 		{ "speed", required_argument, 0, 's' },
 		{ "channel", required_argument, 0, 'c' },
@@ -86,86 +86,107 @@ int main(int argc, char **argv) {
 		{ 0, 0, 0, 0 }
 	};
 
-	while ((c = getopt_long (argc, argv, "fdscba", long_options, NULL)) != EOF)
+	// I think I hate getopt - let's try argp TODO
+	while ((opt = getopt_long( argc, argv, "fdscba", long_options, NULL)) != EOF)
 	{
-		switch (c)
+		switch ( opt )
 		{
 			case 'f':  // Frequency
+				if ( optarg == NULL )
+				{
+
+					fprintf( stderr, "Option -%c requires an argument\n", opt );
+					exit( 1 );
+				}
 				frequency = atoi(optarg);
+				fprintf(stderr, "ZZZ %d", frequency);
 				if ( ( frequency < _PCA9685_MINFREQ ) || ( frequency > _PCA9685_MAXFREQ ) )
 				{
 					fprintf( stderr, "Frequency must be %d - %d.\n", _PCA9685_MINFREQ, _PCA9685_MAXFREQ );
 					exit( 1 );
 				}
+				break;
 			case 'd':  // Duty Cycle
+				if ( optarg == NULL )
+				{
+					fprintf( stderr, "Option -%c requires an argument\n", opt );
+					exit( 1 );
+				}
 				dutycycle = atoi(optarg);
 				if ( ( dutycycle < 0 ) || ( dutycycle > 4095 ) )
 				{
 					fprintf( stderr, "Duty cycle must be 0 - 4095\n" );
 				}
+				break;
 			case 's':  // Speed (delay in ms)
+                                if ( optarg == NULL )
+                                {
+                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
+                                        exit( 1 );
+                                }
 				delay = atoi(optarg);
+				break;
 			case 'c':  // Channel   TODO: Allow multiple channels
+                                if ( optarg == NULL )
+                                {
+                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
+                                        exit( 1 );
+                                }
 				channel = atoi(optarg);
 				if ( ( channel < 0 ) || ( channel >= _PCA9685_CHANS ) )
 				{
 					fprintf( stderr, "Channel must be 0 - %d\n", _PCA9685_CHANS - 1 );
 				}
+				break;
 			case 'b':  // Bus (default 1)
+                                if ( optarg == NULL )
+                                {
+                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
+                                        exit( 1 );
+                                }
 				bus = atoi( optarg );
+				break;
 			case 'a':
+                                if ( optarg == NULL )
+                                {
+                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
+                                        exit( 1 );
+                                }
 				address = atoi( optarg );
+				break;
 			case 'h':  // help mode
 				print_usage(argv[0]);
 				exit(0);
 		} //switch
 	} //while
 
-	if ((argc - optind) != 2) {
-		print_usage(argv[0]);
-		exit(-1);
-	}  // if argc
-
-	long ladpt = strtol(argv[optind], NULL, 16);
-	long laddr = strtol(argv[optind + 1], NULL, 16);
-	if (ladpt > INT_MAX || ladpt < 0) {
-		fprintf(stderr, "ERROR: adapter number %ld is not valid\n", ladpt);
-		exit(-1);
-	} // if ladpt
-	int adpt = ladpt;
-
-	if (laddr > INT_MAX || laddr < 0) {
-		fprintf(stderr, "ERROR: address 0x%02lx is not valid\n", laddr);
-		exit(-1);
-	} // if laddr
-	unsigned char addr = laddr;
 
 
 	// register the signal handler to catch interrupts
 	signal(SIGINT, intHandler);
 
 	// initialize the I2C bus adpt and a PCA9685 at addr with freq
-	fd = initHardware(adpt, addr, 999);
+	fd = initHardware( bus, address, frequency );
 
 	if (fd < 0) {
 		fprintf(stderr, "main(): initHardware() returned ");
-		fprintf(stderr, "%d for adpt %d at addr %02x\n", fd, adpt, addr);
+		fprintf(stderr, "%d for adpt %d at addr %02x\n", fd, bus, address);
 		return -1;
 	} //if
 	
 
 	// PWM init
-	//PCA9685_initPWM(fd, addr, frequency);
+	PCA9685_initPWM(fd, address, frequency);
 
 	// Set the duty cycle on and off values
-	offVal = 0xFFF * dutycycle;
+	offVal = dutycycle;
 
 	channelReg = channel * 4 + _PCA9685_BASEPWMREG;
-	//ret = PCA9685_setPWMVal(fd, addr, channel, onVal, offVal);
-	ret = PCA9685_setPWMVal(fd, addr, channelReg, 0, 4000);
+	ret = PCA9685_setPWMVal(fd, address, channel, onVal, offVal);
+	//ret = PCA9685_setPWMVal(fd, addr, opthannelReg, 0, 4000);
 
 	int val;
-	val = PCA9685_getPWMVal(fd, addr, channelReg, &onVal, &offVal);
+	val = PCA9685_getPWMVal(fd, address, channelReg, &onVal, &offVal);
 	fprintf(stderr, "On: %03x   Off: %03x\n", onVal, offVal);
 	
 	return 0;
