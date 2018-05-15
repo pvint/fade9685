@@ -52,11 +52,12 @@ void printLog(char *msg, unsigned int verbose, unsigned int level)
 
 void print_usage(char *name) {
 	printf("Usage:\n");
-	printf("  %s [options] adapter address\n", name);
+	printf(" %s [options]\n", name);
 	printf("Options:\n");
 	printf("  -h\thelp, show this screen and quit\n");
 	printf("  -f\tFrequency in Hz (24-1526)\n");
 	printf("  -d\tDuty Cycle (0 - 4095)\n");
+	printf("  -l\tLuminosity (0-100)\n");
 	printf("  -r\tFade speed (Sets delay in ms between steps)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
@@ -77,6 +78,7 @@ static char args_doc[] = "ARG1 [STRING...]";
 static struct argp_option options[] = {
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
+	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0.0 - 100.0)" },
 	{ "rate", 's', "rate", 0, "Fade Rate Delay (0=instant)" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-16)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
@@ -91,7 +93,7 @@ struct arguments
 {
 	char *args[2];                /* arg1 & arg2 */
 	unsigned int frequency, rate, channel, bus, address, verbose;
-	float dutycycle;
+	float dutycycle, luminosity;
 };
 
 /* Parse a single option. */
@@ -109,6 +111,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 'd':
 			arguments->dutycycle = atof( arg );
 			break;
+		case 'l':
+			arguments->luminosity = atof( arg );
+			break;
+		case 'r':
+			arguments->rate = strtoul( arg, NULL, 10 );
 		case 's':
 			arguments->rate = atoi( arg );
 			break;
@@ -162,6 +169,7 @@ int main(int argc, char **argv) {
 	unsigned int bus = 1;
 	unsigned int address = 0x40;
 	unsigned int verbose = 0;
+	float luminosity, dutycycle;
 
 	char msg[256];
 	int val;
@@ -170,6 +178,7 @@ int main(int argc, char **argv) {
 
 	/* Default values. */
 	arguments.dutycycle = 0.0f;
+	arguments.luminosity = 0.0f;
 	arguments.frequency = 1526;
 	arguments.rate = 0;
 	arguments.channel = 0;
@@ -184,6 +193,7 @@ int main(int argc, char **argv) {
 	// TODO Put proper error checks in
 	frequency = arguments.frequency;
 	dutycycle = arguments.dutycycle;
+	luminosity = arguments.luminosity;
 	rate = arguments.rate;
 	channel = arguments.channel;
 	bus = arguments.bus;
