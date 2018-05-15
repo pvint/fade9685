@@ -17,7 +17,7 @@
 
 int frequency = _PCA9685_MAXFREQ;	// Default to max
 int dutycycle = 50;
-int delay = 0;
+int rate = 0;
 unsigned char channel = 0;
 
 int initHardware(int adpt, int addr, int freq) {
@@ -41,6 +41,14 @@ int initHardware(int adpt, int addr, int freq) {
 	return fd;
 }  // initHardware
 
+void printLog(char *msg, unsigned int verbose, unsigned int level)
+{
+	if ( level > verbose )
+		return;
+
+	fprintf( stderr, "%d: $s", level, msg );
+	return;
+}
 
 void print_usage(char *name) {
 	printf("Usage:\n");
@@ -49,10 +57,11 @@ void print_usage(char *name) {
 	printf("  -h\thelp, show this screen and quit\n");
 	printf("  -f\tFrequency in Hz (24-1526)\n");
 	printf("  -d\tDuty Cycle (0 - 4095)\n");
-	printf("  -s\tFade speed (Sets delay in ms between steps)\n");
+	printf("  -r\tFade speed (Sets delay in ms between steps)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
 	printf("  -c\tChannel (0 - 15)\n");
+	printf("  -v\tShow verbose outbut (0-5, 0 = NONE, 5 = DEBUG)\n");
 
 } // print_usage
 
@@ -68,10 +77,11 @@ static char args_doc[] = "ARG1 [STRING...]";
 static struct argp_option options[] = {
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
-	{ "speed", 's', "DELAY", 0, "Delay" },
+	{ "rate", 's', "rate", 0, "Fade Rate Delay (0=instant)" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-16)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
 	{ "address", 'a', "ADDRESS", 0, "Address (ie 0x40)" },
+	{ "verbose", 'v', "VERBOSITY", 0, "Verbose output" },
 	{ "help", 'h', 0, 0, "Show help" },
 	{ 0 }
 };
@@ -80,7 +90,7 @@ static struct argp_option options[] = {
 struct arguments
 {
 	char *args[2];                /* arg1 & arg2 */
-	unsigned int frequency, delay, channel, bus, address;
+	unsigned int frequency, rate, channel, bus, address, verbose;
 	float dutycycle;
 };
 
@@ -100,7 +110,7 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			arguments->dutycycle = atof( arg );
 			break;
 		case 's':
-			arguments->delay = atoi( arg );
+			arguments->rate = atoi( arg );
 			break;
 		case 'c':
 			arguments->channel = atoi (arg );
@@ -110,6 +120,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 'a':
 			arguments->address = strtoul( arg, NULL, 16 );
+			break;
+		case 'v':
+			arguments->verbose = 1;
 			break;
 		case 'h':
 			print_usage( "fade9685" );
@@ -143,20 +156,26 @@ int main(int argc, char **argv) {
 	int opt, ret, fd;
 	unsigned int onVal = 0;
 	unsigned int offVal = 0;
+	unsigned int oldOnVal, oldOffVal;
 	unsigned int channel = 0;	// Channel register is channel * 4 + 6
 	unsigned int channelReg;
 	unsigned int bus = 1;
 	unsigned int address = 0x40;
+	unsigned int verbose = 0;
+
+	char msg[256];
+	int val;
 
 	struct arguments arguments;
 
 	/* Default values. */
 	arguments.dutycycle = 0.0f;
 	arguments.frequency = 1526;
-	arguments.delay = 0;
+	arguments.rate = 0;
 	arguments.channel = 0;
 	arguments.bus = 1;
 	arguments.address = 0x40;
+	arguments.verbose = 0;
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
@@ -165,10 +184,11 @@ int main(int argc, char **argv) {
 	// TODO Put proper error checks in
 	frequency = arguments.frequency;
 	dutycycle = arguments.dutycycle;
-	delay = arguments.delay;
+	rate = arguments.rate;
 	channel = arguments.channel;
 	bus = arguments.bus;
 	address = arguments.address;
+	verbose = arguments.verbose;
 	
 
 
@@ -192,10 +212,17 @@ int main(int argc, char **argv) {
 	offVal = dutycycle;
 
 	channelReg = channel * 4 + _PCA9685_BASEPWMREG;
-	ret = PCA9685_setPWMVal(fd, address, channel, onVal, offVal);
-	//ret = PCA9685_setPWMVal(fd, addr, opthannelReg, 0, 4000);
 
-	int val;
+	// Get the existing value
+	val = PCA9685_getPWMVal(fd, address, channelReg, &oldOnVal, &oldOffVal);
+
+	snprintf( msg, 256, "Current on value: %03x  Current off value: %03x", oldOnVal, oldOffVal );
+	printLog( msg, verbose, 3 );
+	
+	// TODO MUST HAVE: Before doing loop to fade in/out, must have ability to use multiple channels
+	// at the same time. And preferably, multiple devices  TODO
+	ret = PCA9685_setPWMVal(fd, address, channel, onVal, offVal);
+
 	val = PCA9685_getPWMVal(fd, address, channelReg, &onVal, &offVal);
 	fprintf(stderr, "On: %03x   Off: %03x\n", onVal, offVal);
 	
