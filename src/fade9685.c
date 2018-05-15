@@ -11,6 +11,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <argp.h>
 
 #include <PCA9685.h>
 
@@ -55,6 +56,81 @@ void print_usage(char *name) {
 
 } // print_usage
 
+// argp
+const char *argp_program_version = "fade9685";
+const char *argp_program_bug_address = "pjvint@gmail.com";
+
+static char doc[] = "fade9685 - simple CLI application to control PWM with a PCA9685 device on I2C";
+/* A description of the arguments we accept. */
+static char args_doc[] = "ARG1 [STRING...]";
+
+
+static struct argp_option options[] = {
+	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
+	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
+	{ "speed", 's', "DELAY", 0, "Delay" },
+	{ "channel", 'c', "CHANNEL", 0, "Channel (0-16)" },
+	{ "bus", 'b', "BUS", 0, "Bus number" },
+	{ "address", 'a', "ADDRESS", 0, "Address (ie 0x40)" },
+	{ "help", 'h', 0, 0, "Show help" },
+	{ 0 }
+};
+
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+	char *args[2];                /* arg1 & arg2 */
+	unsigned int frequency, delay, channel, bus, address;
+	float dutycycle;
+};
+
+/* Parse a single option. */
+static error_t parse_opt (int key, char *arg, struct argp_state *state)
+{
+	/* Get the input argument from argp_parse, which we
+	know is a pointer to our arguments structure. */
+	struct arguments *arguments = state->input;
+
+	switch (key)
+	{
+		case 'f':
+			arguments->frequency = strtoul( arg, NULL, 10 );
+			break;
+		case 'd':
+			arguments->dutycycle = atof( arg );
+			break;
+		case 's':
+			arguments->delay = atoi( arg );
+			break;
+		case 'c':
+			arguments->channel = atoi (arg );
+			break;
+		case 'b':
+			arguments->bus = atoi( arg );
+			break;
+		case 'a':
+			arguments->address = strtoul( arg, NULL, 16 );
+			break;
+		case 'h':
+			print_usage( "fade9685" );
+			exit( 0 );
+			break;
+		case ARGP_KEY_ARG:
+			if (state->arg_num >= 2)
+			{
+				argp_usage(state);
+			}
+			arguments->args[state->arg_num] = arg;
+			break;
+		default:
+			return ARGP_ERR_UNKNOWN;
+	}
+	return 0;
+}
+
+static struct argp argp = { options, parse_opt, args_doc, doc };
+
+
 void intHandler(int dummy) {
 	//cleanup();
 	fprintf(stdout, "Caught signal, exiting (%d)\n", dummy);
@@ -72,94 +148,28 @@ int main(int argc, char **argv) {
 	unsigned int bus = 1;
 	unsigned int address = 0x40;
 
-	opterr = 0;
+	struct arguments arguments;
 
-	static struct option long_options[] = 
-	{
-		{ "frequency", 1, 0, 'f' },
-		{ "dutycycle", required_argument, 0, 'd' },
-		{ "speed", required_argument, 0, 's' },
-		{ "channel", required_argument, 0, 'c' },
-		{ "bus", required_argument, 0, 'b' },
-		{ "address", required_argument, 0, 'a' },
-		{ "help", 0, 0, 'h' },
-		{ 0, 0, 0, 0 }
-	};
+	/* Default values. */
+	arguments.dutycycle = 0.0f;
+	arguments.frequency = 1526;
+	arguments.delay = 0;
+	arguments.channel = 0;
+	arguments.bus = 1;
+	arguments.address = 0x40;
 
-	// I think I hate getopt - let's try argp TODO
-	while ((opt = getopt_long( argc, argv, "fdscba", long_options, NULL)) != EOF)
-	{
-		switch ( opt )
-		{
-			case 'f':  // Frequency
-				if ( optarg == NULL )
-				{
-
-					fprintf( stderr, "Option -%c requires an argument\n", opt );
-					exit( 1 );
-				}
-				frequency = atoi(optarg);
-				fprintf(stderr, "ZZZ %d", frequency);
-				if ( ( frequency < _PCA9685_MINFREQ ) || ( frequency > _PCA9685_MAXFREQ ) )
-				{
-					fprintf( stderr, "Frequency must be %d - %d.\n", _PCA9685_MINFREQ, _PCA9685_MAXFREQ );
-					exit( 1 );
-				}
-				break;
-			case 'd':  // Duty Cycle
-				if ( optarg == NULL )
-				{
-					fprintf( stderr, "Option -%c requires an argument\n", opt );
-					exit( 1 );
-				}
-				dutycycle = atoi(optarg);
-				if ( ( dutycycle < 0 ) || ( dutycycle > 4095 ) )
-				{
-					fprintf( stderr, "Duty cycle must be 0 - 4095\n" );
-				}
-				break;
-			case 's':  // Speed (delay in ms)
-                                if ( optarg == NULL )
-                                {
-                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
-                                        exit( 1 );
-                                }
-				delay = atoi(optarg);
-				break;
-			case 'c':  // Channel   TODO: Allow multiple channels
-                                if ( optarg == NULL )
-                                {
-                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
-                                        exit( 1 );
-                                }
-				channel = atoi(optarg);
-				if ( ( channel < 0 ) || ( channel >= _PCA9685_CHANS ) )
-				{
-					fprintf( stderr, "Channel must be 0 - %d\n", _PCA9685_CHANS - 1 );
-				}
-				break;
-			case 'b':  // Bus (default 1)
-                                if ( optarg == NULL )
-                                {
-                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
-                                        exit( 1 );
-                                }
-				bus = atoi( optarg );
-				break;
-			case 'a':
-                                if ( optarg == NULL )
-                                {
-                                        fprintf( stderr, "Option -%c requires an argument\n", opt );
-                                        exit( 1 );
-                                }
-				address = atoi( optarg );
-				break;
-			case 'h':  // help mode
-				print_usage(argv[0]);
-				exit(0);
-		} //switch
-	} //while
-
+	/* Parse our arguments; every option seen by parse_opt will
+	be reflected in arguments. */
+	argp_parse (&argp, argc, argv, 0, 0, &arguments);
+		
+	// TODO Put proper error checks in
+	frequency = arguments.frequency;
+	dutycycle = arguments.dutycycle;
+	delay = arguments.delay;
+	channel = arguments.channel;
+	bus = arguments.bus;
+	address = arguments.address;
+	
 
 
 	// register the signal handler to catch interrupts
