@@ -15,10 +15,7 @@
 
 #include <PCA9685.h>
 
-int frequency = _PCA9685_MAXFREQ;	// Default to max
-int dutycycle = 50;
-int rate = 0;
-unsigned char channel = 0;
+unsigned int verbose = 0;
 
 int initHardware(unsigned int adpt, unsigned int addr, unsigned int freq, unsigned int reset) {
 	int fd;
@@ -99,7 +96,7 @@ static struct argp_option options[] = {
 struct arguments
 {
 	char *args[2];                /* arg1 & arg2 */
-	unsigned int frequency, channel, bus, address, verbose, reset;
+	unsigned int frequency, channels, bus, address, verbose, reset;
 	int rate;
 	float dutycycle, luminosity;
 };
@@ -127,9 +124,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 's':
 			arguments->rate = atoi( arg );
 			break;
-		// --channel can be used multiple times and values will be bitwise ANDed to the channel variable
+		// --channel can be used multiple times and values will be bitwise ANDed to the channels variable
 		case 'c':
-			arguments->channel = arguments->channel | ( 1 << atoi ( arg ) );
+			arguments->channels = arguments->channels | ( 1 << atoi ( arg ) );
 			break;
 		case 'b':
 			arguments->bus = atoi( arg );
@@ -172,6 +169,95 @@ void intHandler(int dummy) {
 	exit(0);
 } // intHandler 
 
+
+
+/**********   PWM Functions *********/
+
+unsigned int getChannelReg( unsigned int channels, unsigned int channelNum )
+{
+	int c = channels & ( 1 << channelNum );
+	return c * 4 + _PCA9685_BASEPWMREG;
+}
+
+// fadePWM  Fade channels to a given luminosity   TODO: Add Rec 709 luminosity adjustment
+// For fist tests luminosity is simply 0-4095
+int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int rate )
+{
+	unsigned int oldOnVal, oldOffVal, ret, channelReg;
+	unsigned int lowestVal = (int) luminosity; 	// FIXME casting is ok during testing...
+	unsigned int highestVal = (int) luminosity;
+	unsigned int lowestChan, highestChan;
+
+	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+	// Get the current values of requested channels
+	// TODO: Should do this in a way that supports multiple devices thus more channels
+	unsigned int currentVals [ _PCA9685_CHANS ];
+
+	for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
+	{
+		channelReg = getChannelReg( channels, i );
+		ret = PCA9685_getPWMVal(fd, address, channelReg, &oldOnVal, &oldOffVal);
+
+		currentVals[i] = oldOffVal;
+
+		// Also save which register is highest and which is lowest
+		if ( oldOffVal >= highestVal )
+		{
+			highestVal = oldOffVal;
+			highestChan = i;
+		}
+
+		if ( oldOffVal <= lowestVal )
+		{
+			lowestVal = oldOffVal;
+			lowestChan = i;
+		}
+
+	} // for
+
+
+	// fade them in/out. Need to account for situations like setting to 50% when some are higher and some are lower
+	// Find the ones that are most greater and lesser
+	int farthest = highestVal;
+
+	int step = -1;
+	if ( ( luminosity - lowestVal ) > ( highestVal - luminosity ) )
+	{
+		farthest = oldOffVal;
+		step = 1;
+	}
+
+	// fade all channels towards the target
+	
+	for ( int n = farthest; n != luminosity; n += step )
+	{
+		// Loop through each output, setting value if its value is farther than the current setting
+		for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
+		{
+			if ( ( currentVals[i] - luminosity ) > 0 )
+			{
+				currentVals[i]--;
+			}
+
+			if( ( luminosity - currentVals[i] ) > 0 )
+			{
+				currentVals[i]++;
+			}
+		} // for i
+
+		// TODO: Set each one at final value - Is it required??
+
+
+		// Set all outputs
+		ret = PCA9685_setPWMVals(fd, address, setOnVals, currentVals);
+
+				
+	}  // for
+
+
+}	// fadePWM
+
 int main(int argc, char **argv) {
 	_PCA9685_DEBUG = 0;
 	_PCA9685_MODE1 = 0x00 | _PCA9685_ALLCALLBIT;
@@ -179,12 +265,13 @@ int main(int argc, char **argv) {
 	unsigned int onVal = 0;
 	unsigned int offVal = 0;
 	unsigned int oldOnVal, oldOffVal;
-	unsigned int channel = 0;	// Channel register is channel * 4 + 6
+	unsigned int channels = 0;	// Channel register is channel * 4 + 6
 	unsigned int channelReg;
 	unsigned int bus = 1;
 	unsigned int address = 0x40;
-	unsigned int verbose = 0;
 	unsigned int reset = 0;
+	unsigned int frequency = _PCA9685_MAXFREQ;
+	int rate = 0;
 	float luminosity, dutycycle;
 
 	char msg[256];
@@ -197,7 +284,7 @@ int main(int argc, char **argv) {
 	arguments.luminosity = 0.0f;
 	arguments.frequency = 1526;
 	arguments.rate = 0;
-	arguments.channel = 0;
+	arguments.channels = 0;
 	arguments.bus = 1;
 	arguments.address = 0x40;
 	arguments.verbose = 0;
@@ -212,7 +299,7 @@ int main(int argc, char **argv) {
 	dutycycle = arguments.dutycycle;
 	luminosity = arguments.luminosity;
 	rate = arguments.rate;
-	channel = arguments.channel;
+	channels = arguments.channels;
 	bus = arguments.bus;
 	address = arguments.address;
 	verbose = arguments.verbose;
@@ -235,10 +322,10 @@ int main(int argc, char **argv) {
 	// Set the duty cycle on and off values
 	offVal = dutycycle;
 
-	snprintf( msg, 256, "Bitmask of channels: %04x\n", channel );
+	snprintf( msg, 256, "Bitmask of channels: %04x\n", channels );
 	printLog( msg, verbose, 4 );
 
-	channelReg = channel * 4 + _PCA9685_BASEPWMREG;
+	// DEPRECATED channelReg = channel * 4 + _PCA9685_BASEPWMREG;
 
 	// Get the existing value
 	val = PCA9685_getPWMVal(fd, address, channelReg, &oldOnVal, &oldOffVal);
