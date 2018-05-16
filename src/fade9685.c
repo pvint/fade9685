@@ -57,7 +57,7 @@ void print_usage(char *name) {
 	printf("  -h\thelp, show this screen and quit\n");
 	printf("  -R\tReset the PCA9685\n");
 	printf("  -f\tFrequency in Hz (24-1526)\n");
-	printf("  -d\tDuty Cycle (0 - 4095)\n");
+	printf("  -d\tDuty Cycle (0 - 100)\n");
 	printf("  -l\tLuminosity (0-100)\n");
 	printf("  -r\tFade rate (Sets delay in ms between steps. -1 means instant)\n");
 	printf("  -b\tBus number (default 1)\n");
@@ -194,6 +194,7 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	// TODO: Should do this in a way that supports multiple devices thus more channels
 	unsigned int currentVals [ _PCA9685_CHANS ];
 
+	// FIXME use _getPWMVals to get all at once!
 	for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
 	{
 		channelReg = getChannelReg( channels, i );
@@ -229,7 +230,7 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	}
 
 	// fade all channels towards the target
-	
+	// FIXME - this is bizarre
 	for ( int n = farthest; n != luminosity; n += step )
 	{
 		// Loop through each output, setting value if its value is farther than the current setting
@@ -258,6 +259,35 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 
 }	// fadePWM
 
+int setDutyCycle( unsigned int fd, unsigned int address, unsigned int channels, float dutycycle )
+{
+	// set the duty cycle of channels instantly
+	unsigned int o = (int) ( dutycycle / 100.0f * 4095.0f );
+	unsigned int bit = 1;
+	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	unsigned int setOffVals[_PCA9685_CHANS];
+	unsigned int channelReg, offVal;
+	int ret;
+
+
+	// Get the current values 
+	ret = PCA9685_getPWMVals( fd, address, &setOnVals, &setOffVals );
+
+	for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
+	{
+		if ( channels & ( 1 << i ) )
+		{
+			setOffVals[i] = o;
+		}
+	}
+
+	ret = PCA9685_setPWMVals( fd, address, &setOnVals, &setOffVals );
+
+	return 0;
+
+}  // setDutyCycle
+
+
 int main(int argc, char **argv) {
 	_PCA9685_DEBUG = 0;
 	_PCA9685_MODE1 = 0x00 | _PCA9685_ALLCALLBIT;
@@ -280,8 +310,8 @@ int main(int argc, char **argv) {
 	struct arguments arguments;
 
 	/* Default values. */
-	arguments.dutycycle = 0.0f;
-	arguments.luminosity = 0.0f;
+	arguments.dutycycle = -1.0f;
+	arguments.luminosity = -1.0f;
 	arguments.frequency = 1526;
 	arguments.rate = 0;
 	arguments.channels = 0;
@@ -318,6 +348,21 @@ int main(int argc, char **argv) {
 		return -1;
 	} //if
 	
+
+	/*  FIXME TEMP FIXME */
+	//	int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int rate )
+	if ( luminosity >= 0.0f )
+	{
+		ret = fadePWM( fd, address, channels, luminosity, rate );
+		exit(1);
+	}
+
+	if ( dutycycle >= 0.0f )
+	{
+		// When setting duty cycle, set instantly
+		ret = setDutyCycle( fd, address, channels, dutycycle );
+		exit(0);
+	}
 
 	// Set the duty cycle on and off values
 	offVal = dutycycle;
