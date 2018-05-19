@@ -183,56 +183,61 @@ unsigned int getChannelReg( unsigned int channels, unsigned int channelNum )
 // For fist tests luminosity is simply 0-4095
 int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int rate )
 {
-	unsigned int oldOnVal, oldOffVal, ret, channelReg;
-	unsigned int lowestVal = (int) luminosity; 	// FIXME casting is ok during testing...
-	unsigned int highestVal = (int) luminosity;
-	unsigned int lowestChan, highestChan;
+	// REDO
+	// 1. Get all current values
+	// 2. check which is farthest from setpoint
+	// 3. increase/decrease each until they are at the setpoint (start loop at "farthest")
+	
+	unsigned int oldOnVal, oldOffVal, channelReg;
+	unsigned int lowestVal;
+	unsigned int highestVal;
+	unsigned int lowestChan, highestChan, newSetPoint;
+	int ret;
+	unsigned int currentVals [ _PCA9685_CHANS ];
 
 	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	// Get the current values of requested channels
-	// TODO: Should do this in a way that supports multiple devices thus more channels
-	unsigned int currentVals [ _PCA9685_CHANS ];
+	newSetPoint = (unsigned int) ( luminosity /100.0f * 4095.0f );
+	lowestVal = newSetPoint;
+	highestVal = newSetPoint;
 
-	// FIXME use _getPWMVals to get all at once!
+	// Get current values
+	ret = PCA9685_getPWMVals( fd, address, &setOnVals, &currentVals );
+
+	// Find the value that is farthest from setpoint
 	for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
 	{
-		channelReg = getChannelReg( channels, i );
-		ret = PCA9685_getPWMVal(fd, address, channelReg, &oldOnVal, &oldOffVal);
-
-		currentVals[i] = oldOffVal;
-
-		// Also save which register is highest and which is lowest
-		if ( oldOffVal >= highestVal )
+		if ( currentVals[i] > highestVal )
 		{
-			highestVal = oldOffVal;
+			highestVal = currentVals[i];
 			highestChan = i;
 		}
 
-		if ( oldOffVal <= lowestVal )
+		if ( currentVals[i] < lowestVal )
 		{
-			lowestVal = oldOffVal;
+			lowestVal = currentVals[i];
 			lowestChan = i;
 		}
-
-	} // for
+	}
 
 
 	// fade them in/out. Need to account for situations like setting to 50% when some are higher and some are lower
 	// Find the ones that are most greater and lesser
-	int farthest = highestVal;
-
-	int step = -1;
-	if ( ( luminosity - lowestVal ) > ( highestVal - luminosity ) )
+	unsigned int farthest = highestVal;
+	if ( ( newSetPoint - lowestVal ) > (highestVal - newSetPoint ) )
 	{
-		farthest = oldOffVal;
-		step = 1;
+		farthest = lowestVal;
 	}
 
 	// fade all channels towards the target
-	// FIXME - this is bizarre
-	for ( int n = farthest; n != luminosity; n += step )
+	int step = 1;
+	for ( unsigned int n = 0; n != abs( newSetPoint - farthest ); n += step )
 	{
+		// TODO FIXME  This is as far as I got in refactoring....
+		//
+		// check and modify current settings from arrays
+		// then setAll on each iteration
+		//
 		// Loop through each output, setting value if its value is farther than the current setting
 		for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
 		{
