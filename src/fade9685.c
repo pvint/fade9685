@@ -57,12 +57,12 @@ void print_usage(char *name) {
 	printf("  -h\thelp, show this screen and quit\n");
 	printf("  -R\tReset the PCA9685\n");
 	printf("  -f\tFrequency in Hz (24-1526)\n");
-	printf("  -d\tDuty Cycle (0 - 100)\n");
-	printf("  -l\tLuminosity (0 - 4095)\n");
-	printf("  -s\tFade rate (Sets step)\n");
+	printf("  -d\tSet Duty Cycle Instantly (0 - 100)\n");
+	printf("  -l\tFade to Luminosity (0 - 4095)\n");
+	printf("  -s\tStep (Larger value fades more quickly)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
-	printf("  -c\tChannel (0 - 15)\n");
+	printf("  -c\tChannel (0 - 15) Can be repeated for multiple channels\n");
 	printf("  -v\tShow verbose outbut (0-5, 0 = NONE, 5 = DEBUG)\n");
 	printf("  -D\tEnable libPCA9685 debugging\n");
 
@@ -82,7 +82,7 @@ static struct argp_option options[] = {
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
 	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 4095)" },
-	{ "step", 's', "step", 0, "Fade Rate step" },
+	{ "step", 's', "STEP", 0, "Fade Rate step" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-16)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
 	{ "address", 'a', "ADDRESS", 0, "Address (ie 0x40)" },
@@ -366,8 +366,6 @@ int main(int argc, char **argv) {
 	} //if
 	
 
-	/*  FIXME TEMP FIXME */
-	//	int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int rate )
 	if ( luminosity >= 0.0f )
 	{
 		ret = fadePWM( fd, address, channels, luminosity, step );
