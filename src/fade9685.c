@@ -58,8 +58,8 @@ void print_usage(char *name) {
 	printf("  -R\tReset the PCA9685\n");
 	printf("  -f\tFrequency in Hz (24-1526)\n");
 	printf("  -d\tDuty Cycle (0 - 100)\n");
-	printf("  -l\tLuminosity (0-100)\n");
-	printf("  -r\tFade rate (Sets delay in ms between steps. -1 means instant)\n");
+	printf("  -l\tLuminosity (0 - 4095)\n");
+	printf("  -s\tFade rate (Sets step)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
 	printf("  -c\tChannel (0 - 15)\n");
@@ -81,8 +81,8 @@ static struct argp_option options[] = {
 	{ "reset", 'R', 0, 0, "Reset PCA9685" },
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
-	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0.0 - 100.0)" },
-	{ "rate", 's', "rate", 0, "Fade Rate Delay (0=instant)" },
+	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 4095)" },
+	{ "step", 's', "step", 0, "Fade Rate step" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-16)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
 	{ "address", 'a', "ADDRESS", 0, "Address (ie 0x40)" },
@@ -97,7 +97,7 @@ struct arguments
 {
 	char *args[2];                /* arg1 & arg2 */
 	unsigned int frequency, channels, bus, address, verbose, reset;
-	int rate;
+	int step;
 	float dutycycle, luminosity;
 };
 
@@ -119,10 +119,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 		case 'l':
 			arguments->luminosity = atof( arg );
 			break;
-		case 'r':
-			arguments->rate = strtol( arg, NULL, 10 );
 		case 's':
-			arguments->rate = atoi( arg );
+			arguments->step = atoi( arg );
 			break;
 		// --channel can be used multiple times and values will be bitwise ANDed to the channels variable
 		case 'c':
@@ -181,7 +179,7 @@ unsigned int getChannelReg( unsigned int channels, unsigned int channelNum )
 
 // fadePWM  Fade channels to a given luminosity   TODO: Add Rec 709 luminosity adjustment
 // For fist tests luminosity is simply 0-4095
-int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int rate )
+int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int step )
 {
 	// REDO
 	// 1. Get all current values
@@ -197,7 +195,8 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 
 	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	newSetPoint = (unsigned int) ( luminosity /100.0f * 4095.0f );
+	//newSetPoint = (unsigned int) ( luminosity /100.0f * 4095.0f );
+	newSetPoint = luminosity;
 	lowestVal = newSetPoint;
 	highestVal = newSetPoint;
 
@@ -207,17 +206,20 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	// Find the value that is farthest from setpoint
 	for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
 	{
-		if ( currentVals[i] > highestVal )
+		if ( channels & ( 1 << i ) )
 		{
-			highestVal = currentVals[i];
-			highestChan = i;
-		}
+			if ( currentVals[i] > highestVal )
+			{
+				highestVal = currentVals[i];
+				highestChan = i;
+			}
 
-		if ( currentVals[i] < lowestVal )
-		{
-			lowestVal = currentVals[i];
+			if ( currentVals[i] < lowestVal )
+			{
+				lowestVal = currentVals[i];
 			lowestChan = i;
-		}
+			}
+		} //if channels
 	}
 
 
@@ -230,10 +232,10 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	}
 
 	// fade all channels towards the target
-	int step = 1;
-	for ( unsigned int n = 0; n != abs( newSetPoint - farthest ); n += step )
+	fprintf( stderr,"channels: %d  newSetPoint: %d  farthest: %d   %d\n", channels, newSetPoint, farthest, abs(newSetPoint - farthest));
+	for ( unsigned int n = 0; n <= abs( newSetPoint - farthest ); n += step )
 	{
-		// TODO FIXME  This is as far as I got in refactoring....
+		//fprintf( stderr, "\n%d\n", n);
 		//
 		// check and modify current settings from arrays
 		// then setAll on each iteration
@@ -241,15 +243,25 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 		// Loop through each output, setting value if its value is farther than the current setting
 		for ( unsigned int i = 0; i < _PCA9685_CHANS; i++ )
 		{
-			if ( ( currentVals[i] - luminosity ) > 0 )
+			if ( channels & ( 1 << i ) )
 			{
-				currentVals[i]--;
-			}
+				if ( ( currentVals[i] - luminosity ) > 0 )
+				{
+					if ( currentVals[i] >= step )
+						currentVals[i] -= step;
+					else
+						currentVals[i] = luminosity;
+				}
 
-			if( ( luminosity - currentVals[i] ) > 0 )
-			{
-				currentVals[i]++;
-			}
+				if( ( luminosity - currentVals[i] ) > 0 )
+				{
+					if ( currentVals[i] <= ( 4095 - step ) )
+						currentVals[i] += step;
+					else
+						currentVals[i] = luminosity;
+				}
+			}  // if channels
+			//fprintf ( stderr, "%d\t", currentVals[i]);
 		} // for i
 
 		// TODO: Set each one at final value - Is it required??
@@ -306,7 +318,7 @@ int main(int argc, char **argv) {
 	unsigned int address = 0x40;
 	unsigned int reset = 0;
 	unsigned int frequency = _PCA9685_MAXFREQ;
-	int rate = 0;
+	int step = 1;
 	float luminosity, dutycycle;
 
 	char msg[256];
@@ -318,7 +330,7 @@ int main(int argc, char **argv) {
 	arguments.dutycycle = -1.0f;
 	arguments.luminosity = -1.0f;
 	arguments.frequency = 1526;
-	arguments.rate = 0;
+	arguments.step = 20;
 	arguments.channels = 0;
 	arguments.bus = 1;
 	arguments.address = 0x40;
@@ -333,7 +345,7 @@ int main(int argc, char **argv) {
 	frequency = arguments.frequency;
 	dutycycle = arguments.dutycycle;
 	luminosity = arguments.luminosity;
-	rate = arguments.rate;
+	step = arguments.step;
 	channels = arguments.channels;
 	bus = arguments.bus;
 	address = arguments.address;
@@ -358,7 +370,7 @@ int main(int argc, char **argv) {
 	//	int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int rate )
 	if ( luminosity >= 0.0f )
 	{
-		ret = fadePWM( fd, address, channels, luminosity, rate );
+		ret = fadePWM( fd, address, channels, luminosity, step );
 		exit(1);
 	}
 
