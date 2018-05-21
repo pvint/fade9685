@@ -62,7 +62,7 @@ void print_usage(char *name) {
 	printf("  -s\tStep (Larger value fades more quickly)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
-	printf("  -c\tChannel (0 - 15) Can be repeated for multiple channels\n");
+	printf("  -c\tChannel (0 - 15) Can be repeated for multiple channels or -1 for all\n");
 	printf("  -v\tShow verbose outbut (0-5, 0 = NONE, 5 = DEBUG)\n");
 	printf("  -D\tEnable libPCA9685 debugging\n");
 
@@ -83,7 +83,7 @@ static struct argp_option options[] = {
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
 	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 4095)" },
 	{ "step", 's', "STEP", 0, "Fade Rate step" },
-	{ "channel", 'c', "CHANNEL", 0, "Channel (0-16)" },
+	{ "channel", 'c', "CHANNEL", 0, "Channel (0-15 or -1 for all)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
 	{ "address", 'a', "ADDRESS", 0, "Address (ie 0x40)" },
 	{ "verbose", 'v', "VERBOSITY", 0, "Verbose output" },
@@ -124,7 +124,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		// --channel can be used multiple times and values will be bitwise ANDed to the channels variable
 		case 'c':
-			arguments->channels = arguments->channels | ( 1 << atoi ( arg ) );
+			if ( atoi( arg ) == -1 )
+				arguments->channels = 0xffff;
+			else
+				arguments->channels = arguments->channels | ( 1 << atoi ( arg ) );
 			break;
 		case 'b':
 			arguments->bus = atoi( arg );
