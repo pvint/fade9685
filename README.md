@@ -15,6 +15,7 @@ See https://github.com/edlins/libPCA9685
 	make
 
 ## USAGE
+```
 root@uniform /usr/local/src/fade9685/build [2]$ ./fade9685 -h
 Usage:
  fade9685 [options]
@@ -30,7 +31,7 @@ Options:
   -c    Channel (0 - 15) Can be repeated for multiple channels or -1 for all
   -v    Show verbose outbut (0-5, 0 = NONE, 5 = DEBUG)
   -D    Enable libPCA9685 debugging
-
+```
 
 ## EXAMPLES
 To reset the device and set frequency:
