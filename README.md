@@ -48,5 +48,6 @@ To fade outputs to a certain luminosity level (0-4095): ** this might change in 
 ```
 ./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 4000
 ```
-Note that when fading outputs you can controll the fade rate with -s
+Note that when fading outputs you can control the fade rate with -s
+
 -s 30 or so gives a nice rate with a Pi Zero W.
