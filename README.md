@@ -33,10 +33,16 @@ See https://github.com/edlins/libPCA9685
 
 ## EXAMPLES
 To reset the device and set frequency:
-`./fade9685 -b 1 -a 0x41 -f 1000 -R`
+````
+./fade9685 -b 1 -a 0x41 -f 1000 -R
+```
 
 To set two outputs instantly to a specific duty cycle:
-`./fade9685 -b 1 -a 0x41 -c 0 -c 3 -d 50`
+```
+./fade9685 -b 1 -a 0x41 -c 0 -c 3 -d 50
+```
 
 To fade outputs to a certain luminosity level (0-4095): ** this might change in future revisions
-`./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 4000`
+```
+./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 4000
+```
