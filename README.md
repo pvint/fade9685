@@ -1,7 +1,7 @@
-fade9685 
+# fade9685 
 
-# Basic CLI application for controlling LEDs over I2C on a Raspberyy Pi or similar device
-# (Most testing is being done with a Pi Zero Wireless)
+	Basic CLI application for controlling LEDs over I2C on a Raspberyy Pi or similar device
+	(Most testing is being done with a Pi Zero Wireless)
 
 
 DEPENDENCIES
