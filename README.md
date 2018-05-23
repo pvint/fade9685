@@ -15,21 +15,22 @@ See https://github.com/edlins/libPCA9685
 	make
 
 ## USAGE
-	pi@uniform:/usr/local/src/fade9685/build $ ./fade9685  -h
-	Usage:
-	 fade9685 [options]
-	Options:
-	  -h    help, show this screen and quit
-	  -R    Reset the PCA9685
-	  -f    Frequency in Hz (24-1526)
-	  -d    Duty Cycle (0 - 100)
-	  -l    Luminosity (0-100)
-	  -r    Fade rate (Sets delay in ms between steps. -1 means instant)
-	  -b    Bus number (default 1)
-	  -a    Address (Default 0x42)
-	  -c    Channel (0 - 15)
-	  -v    Show verbose outbut (0-5, 0 = NONE, 5 = DEBUG)
-	  -D    Enable libPCA9685 debugging
+root@uniform /usr/local/src/fade9685/build [2]$ ./fade9685 -h
+Usage:
+ fade9685 [options]
+Options:
+  -h    help, show this screen and quit
+  -R    Reset the PCA9685
+  -f    Frequency in Hz (24-1526)
+  -d    Set Duty Cycle Instantly (0 - 100)
+  -l    Fade to Luminosity (0 - 4095)
+  -s    Step (Larger value fades more quickly)
+  -b    Bus number (default 1)
+  -a    Address (Default 0x42)
+  -c    Channel (0 - 15) Can be repeated for multiple channels or -1 for all
+  -v    Show verbose outbut (0-5, 0 = NONE, 5 = DEBUG)
+  -D    Enable libPCA9685 debugging
+
 
 ## EXAMPLES
 To reset the device and set frequency:
@@ -46,3 +47,5 @@ To fade outputs to a certain luminosity level (0-4095): ** this might change in 
 ```
 ./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 4000
 ```
+Note that when fading outputs you can controll the fade rate with -s
+-s 30 or so gives a nice rate with a Pi Zero W.
