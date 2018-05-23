@@ -33,7 +33,7 @@ See https://github.com/edlins/libPCA9685
 
 ## EXAMPLES
 To reset the device and set frequency:
-````
+```
 ./fade9685 -b 1 -a 0x41 -f 1000 -R
 ```
 
