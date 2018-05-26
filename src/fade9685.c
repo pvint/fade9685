@@ -120,7 +120,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			arguments->luminosity = atof( arg );
 			// Adjust luminosity % to real value
 			// TODO: Add the human perception adjustment
-			arguments->luminosity = arguments->luminosity / 100.0f * 4095;
+			// Do this right... 
+			//arguments->luminosity = arguments->luminosity / 100.0f * 4095;
 			break;
 		case 's':
 			arguments->step = atoi( arg );
@@ -183,6 +184,11 @@ unsigned int getChannelReg( unsigned int channels, unsigned int channelNum )
 	return c * 4 + _PCA9685_BASEPWMREG;
 }
 
+unsigned int luminosityToVal( float lum )
+{
+	unsigned int l = lum / 100.0f * 4095;
+	return l;
+}
 // fadePWM  Fade channels to a given luminosity   TODO: Add Rec 709 luminosity adjustment
 // For fist tests luminosity is simply 0-4095
 int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int step )
@@ -202,7 +208,7 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	//newSetPoint = (unsigned int) ( luminosity /100.0f * 4095.0f );
-	newSetPoint = luminosity;
+	newSetPoint = luminosityToVal(luminosity);
 	lowestVal = newSetPoint;
 	highestVal = newSetPoint;
 
