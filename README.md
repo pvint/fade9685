@@ -24,7 +24,7 @@ Options:
   -R    Reset the PCA9685
   -f    Frequency in Hz (24-1526)
   -d    Set Duty Cycle Instantly (0 - 100)
-  -l    Fade to Luminosity (0 - 4095)
+  -l    Fade to Luminosity (0 - 100)
   -s    Step (Larger value fades more quickly)
   -b    Bus number (default 1)
   -a    Address (Default 0x42)
@@ -44,9 +44,9 @@ To set two outputs instantly to a specific duty cycle:
 ./fade9685 -b 1 -a 0x41 -c 0 -c 3 -d 50
 ```
 
-To fade outputs to a certain luminosity level (0-4095): ** this might change in future revisions
+To fade outputs to a certain luminosity level (0-100%): ** this might change in future revisions
 ```
-./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 4000
+./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 40
 ```
 Note that when fading outputs you can control the fade rate with -s
 
