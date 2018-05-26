@@ -58,7 +58,7 @@ void print_usage(char *name) {
 	printf("  -R\tReset the PCA9685\n");
 	printf("  -f\tFrequency in Hz (24-1526)\n");
 	printf("  -d\tSet Duty Cycle Instantly (0 - 100)\n");
-	printf("  -l\tFade to Luminosity (0 - 4095)\n");
+	printf("  -l\tFade to Luminosity (0 - 100)\n");
 	printf("  -s\tStep (Larger value fades more quickly)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
@@ -81,7 +81,7 @@ static struct argp_option options[] = {
 	{ "reset", 'R', 0, 0, "Reset PCA9685" },
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
-	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 4095)" },
+	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 100)" },
 	{ "step", 's', "STEP", 0, "Fade Rate step" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-15 or -1 for all)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
@@ -118,6 +118,9 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			break;
 		case 'l':
 			arguments->luminosity = atof( arg );
+			// Adjust luminosity % to real value
+			// TODO: Add the human perception adjustment
+			arguments->luminosity = arguments->luminosity / 100.0f * 4095;
 			break;
 		case 's':
 			arguments->step = atoi( arg );
