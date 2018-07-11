@@ -3,7 +3,7 @@ project(FADE9685)
 
 # add flags
 #set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -D_BSD_SOURCE -std=c11 -Wall -pedantic -Wextra")
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -D_BSD_SOURCE -std=c11 -pedantic")
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -D_BSD_SOURCE -std=c11 -pedantic -lm")
 
 # get the PCA9685 lib
 find_library(PCA9685_LIBRARY PCA9685 HINTS /usr/local/lib)

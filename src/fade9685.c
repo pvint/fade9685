@@ -11,6 +11,7 @@
 #include <getopt.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <math.h>
 #include <argp.h>
 
 #include <PCA9685.h>
@@ -59,6 +60,7 @@ void print_usage(char *name) {
 	printf("  -f\tFrequency in Hz (24-1526)\n");
 	printf("  -d\tSet Duty Cycle Instantly (0 - 100)\n");
 	printf("  -l\tFade to Luminosity (0 - 100)\n");
+	printf("  -r\tMake luminosity human friendly using Rec 709 visual gradient (0 - 100)\n");
 	printf("  -s\tStep (Larger value fades more quickly)\n");
 	printf("  -b\tBus number (default 1)\n");
 	printf("  -a\tAddress (Default 0x42)\n");
@@ -82,6 +84,7 @@ static struct argp_option options[] = {
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
 	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 100)" },
+	{ "rec709", 'r', 0, 0, "Use Rec709 to make luminosity eye-friendly" },
 	{ "step", 's', "STEP", 0, "Fade Rate step" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-15 or -1 for all)" },
 	{ "bus", 'b', "BUS", 0, "Bus number" },
@@ -96,7 +99,7 @@ static struct argp_option options[] = {
 struct arguments
 {
 	char *args[2];                /* arg1 & arg2 */
-	unsigned int frequency, channels, bus, address, verbose, reset;
+	unsigned int frequency, channels, bus, address, verbose, reset, rec709;
 	int step;
 	float dutycycle, luminosity;
 };
@@ -123,6 +126,8 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			// Do this right... 
 			//arguments->luminosity = arguments->luminosity / 100.0f * 4095;
 			break;
+		case 'r':
+			arguments->rec709 = 1;
 		case 's':
 			arguments->step = atoi( arg );
 			break;
@@ -178,6 +183,7 @@ void intHandler(int dummy) {
 
 /**********   PWM Functions *********/
 
+
 unsigned int getChannelReg( unsigned int channels, unsigned int channelNum )
 {
 	int c = channels & ( 1 << channelNum );
@@ -189,6 +195,29 @@ unsigned int luminosityToVal( float lum )
 	unsigned int l = lum / 100.0f * 4095;
 	return l;
 }
+
+
+/***** Adjust luminosity % to a value that our eyes agree with using Rec 709 adjustment  *****/
+/**	Reasoning: Our eyes do not perceive the brightness in a linear fashion
+ * 	and the difference between 1% and 2% appears greater than the difference between 90% and 100%
+**/
+unsigned int luminosityToVisualVal( float lum )
+{
+	// I like the math when the lum is 0-1 rather than %
+	lum = lum / 100.0f;
+
+	unsigned int l;
+	if ( lum < 0.081f )
+		lum = lum / 4.5;
+	else
+		lum = pow( (( lum + 0.099f ) / 1.099f ), ( 1.0f / 0.45f ) );
+
+	l = lum / 100.0f * 4095.0f;
+
+	return l;
+}
+
+
 // fadePWM  Fade channels to a given luminosity   TODO: Add Rec 709 luminosity adjustment
 // For fist tests luminosity is simply 0-4095
 int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float luminosity, unsigned int step )
@@ -330,6 +359,7 @@ int main(int argc, char **argv) {
 	unsigned int address = 0x40;
 	unsigned int reset = 0;
 	unsigned int frequency = _PCA9685_MAXFREQ;
+	unsigned int rec709 = 0;
 	int step = 1;
 	float luminosity, dutycycle;
 
@@ -341,6 +371,7 @@ int main(int argc, char **argv) {
 	/* Default values. */
 	arguments.dutycycle = -1.0f;
 	arguments.luminosity = -1.0f;
+	arguments.rec709 = 0;
 	arguments.frequency = 1526;
 	arguments.step = 20;
 	arguments.channels = 0;
