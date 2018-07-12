@@ -14,4 +14,5 @@ include_directories ("${PROJECT_SOURCE_DIR}/src")
 add_executable (fade9685 src/fade9685.c)
 target_link_libraries(fade9685 ${PCA9685_LIBRARY})
 
-
+# install
+install(TARGETS fade9685 DESTINATION bin)
