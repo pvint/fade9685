@@ -18,31 +18,34 @@
 
 unsigned int verbose = 0;
 
-int initHardware(unsigned int adpt, unsigned int addr, unsigned int freq, unsigned int reset) {
+int initHardware( unsigned int adpt, unsigned int addr, unsigned int freq, unsigned int reset ) {
 	int fd;
 	int ret;
 
 	// setup the I2C bus device 
-	fd = PCA9685_openI2C(adpt, addr);
-	if (fd < 0) {
-		fprintf(stderr, "initHardware(): PCA9685_openI2C() returned ");
-		fprintf(stderr, "%d for adpt %d at addr %x\n", fd, adpt, addr);
+	fd = PCA9685_openI2C( adpt, addr );
+	if ( fd < 0 ) {
+		fprintf( stderr, "initHardware(): PCA9685_openI2C() returned " );
+		fprintf( stderr, "%d for adpt %d at addr %x\n", fd, adpt, addr );
 		return -1;
 	} // if
+
 	// initialize the pca9685 device
 	if ( reset == 1 )
 	{
-		ret = PCA9685_initPWM(fd, addr, freq);
-		if (ret != 0) {
-			fprintf(stderr, "initHardware(): PCA9685_initPWM() returned %d\n", ret);
+		ret = PCA9685_initPWM( fd, addr, freq );
+		if ( ret != 0 ) 
+		{
+			fprintf( stderr, "initHardware(): PCA9685_initPWM() returned %d\n", ret );
 			return -1;
 		} // if
 	} // if reset
 
 	return fd;
+
 }  // initHardware
 
-void printLog(char *msg, unsigned int verbose, unsigned int level)
+void printLog( char *msg, unsigned int verbose, unsigned int level )
 {
 	if ( level > verbose )
 		return;
@@ -51,7 +54,8 @@ void printLog(char *msg, unsigned int verbose, unsigned int level)
 	return;
 }
 
-void print_usage(char *name) {
+void print_usage( char *name ) 
+{
 	printf("Usage:\n");
 	printf(" %s [options]\n", name);
 	printf("Options:\n");
@@ -105,13 +109,13 @@ struct arguments
 };
 
 /* Parse a single option. */
-static error_t parse_opt (int key, char *arg, struct argp_state *state)
+static error_t parse_opt ( int key, char *arg, struct argp_state *state )
 {
 	/* Get the input argument from argp_parse, which we
 	know is a pointer to our arguments structure. */
 	struct arguments *arguments = state->input;
 
-	switch (key)
+	switch ( key )
 	{
 		case 'f':
 			arguments->frequency = strtoul( arg, NULL, 10 );
@@ -158,11 +162,11 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 			exit( 0 );
 			break;
 		case ARGP_KEY_ARG:
-			if (state->arg_num >= 2)
+			if ( state->arg_num >= 2 )
 			{
-				argp_usage(state);
+				argp_usage( state );
 			}
-			arguments->args[state->arg_num] = arg;
+			arguments->args[ state->arg_num ] = arg;
 			break;
 		default:
 			return ARGP_ERR_UNKNOWN;
@@ -173,10 +177,10 @@ static error_t parse_opt (int key, char *arg, struct argp_state *state)
 static struct argp argp = { options, parse_opt, args_doc, doc };
 
 
-void intHandler(int dummy) {
-	//cleanup();
-	fprintf(stdout, "Caught signal, exiting (%d)\n", dummy);
-	exit(0);
+void intHandler( int dummy ) {
+	//cleanup();	// FIXME - need a proper cleanup!!
+	fprintf( stdout, "Caught signal, exiting (%d)\n", dummy );
+	exit( 0 );
 } // intHandler 
 
 
@@ -210,7 +214,7 @@ unsigned int luminosityToVisualVal( float lum )
 	if ( lum < 0.081f )
 		lum = lum / 4.5;
 	else
-		lum = pow( (( lum + 0.099f ) / 1.099f ), ( 1.0f / 0.45f ) );
+		lum = pow( (( lum + 0.099f ) / 1.099f ), ( 1.0f / 0.45f ));
 
 	l = lum / 100.0f * 4095.0f;
 
@@ -236,8 +240,7 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 
 	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	//newSetPoint = (unsigned int) ( luminosity /100.0f * 4095.0f );
-	newSetPoint = luminosityToVal(luminosity);
+	newSetPoint = luminosityToVal( luminosity );
 	lowestVal = newSetPoint;
 	highestVal = newSetPoint;
 
@@ -273,7 +276,7 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	}
 
 	// fade all channels towards the target
-	fprintf( stderr,"channels: %d  newSetPoint: %d  farthest: %d   %d\n", channels, newSetPoint, farthest, abs(newSetPoint - farthest));
+	fprintf( stderr,"channels: %d  newSetPoint: %d  farthest: %d   %d\n", channels, newSetPoint, farthest, abs(newSetPoint - farthest ));
 	for ( unsigned int n = 0; n <= abs( newSetPoint - farthest ); n += step )
 	{
 		//fprintf( stderr, "\n%d\n", n);
@@ -309,7 +312,7 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 
 
 		// Set all outputs
-		ret = PCA9685_setPWMVals(fd, address, setOnVals, currentVals);
+		ret = PCA9685_setPWMVals( fd, address, setOnVals, currentVals );
 
 				
 	}  // for
@@ -382,7 +385,7 @@ int main(int argc, char **argv) {
 
 	/* Parse our arguments; every option seen by parse_opt will
 	be reflected in arguments. */
-	argp_parse (&argp, argc, argv, 0, 0, &arguments);
+	argp_parse ( &argp, argc, argv, 0, 0, &arguments );
 		
 	// TODO Put proper error checks in
 	frequency = arguments.frequency;
@@ -397,14 +400,14 @@ int main(int argc, char **argv) {
 
 
 	// register the signal handler to catch interrupts
-	signal(SIGINT, intHandler);
+	signal( SIGINT, intHandler );
 
 	// initialize the I2C bus adpt and a PCA9685 at addr with freq
 	fd = initHardware( bus, address, frequency, reset );
 
 	if (fd < 0) {
-		fprintf(stderr, "main(): initHardware() returned ");
-		fprintf(stderr, "%d for adpt %d at addr %02x\n", fd, bus, address);
+		fprintf( stderr, "main(): initHardware() returned " );
+		fprintf( stderr, "%d for adpt %d at addr %02x\n", fd, bus, address );
 		return -1;
 	} //if
 	
@@ -431,7 +434,7 @@ int main(int argc, char **argv) {
 	// DEPRECATED channelReg = channel * 4 + _PCA9685_BASEPWMREG;
 
 	// Get the existing value
-	val = PCA9685_getPWMVal(fd, address, channelReg, &oldOnVal, &oldOffVal);
+	val = PCA9685_getPWMVal( fd, address, channelReg, &oldOnVal, &oldOffVal );
 
 	snprintf( msg, 256, "Current on value: %03x  Current off value: %03x", oldOnVal, oldOffVal );
 	printLog( msg, verbose, 3 );
@@ -441,10 +444,10 @@ int main(int argc, char **argv) {
 	snprintf( msg, 256, "Setting on value: %03x  Setting off value: %03x", onVal, offVal );
 	printLog( msg, verbose, 5 );
 
-	ret = PCA9685_setPWMVal(fd, address, channelReg, onVal, offVal);
+	ret = PCA9685_setPWMVal( fd, address, channelReg, onVal, offVal );
 
-	val = PCA9685_getPWMVal(fd, address, channelReg, &onVal, &offVal);
-	fprintf(stderr, "On: %03x   Off: %03x\n", onVal, offVal);
+	val = PCA9685_getPWMVal( fd, address, channelReg, &onVal, &offVal );
+	//fprintf( stderr, "On: %03x   Off: %03x\n", onVal, offVal );
 	
 	return 0;
 } // main
