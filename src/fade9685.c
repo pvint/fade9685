@@ -135,7 +135,7 @@ static error_t parse_opt ( int key, char *arg, struct argp_state *state )
 		case 's':
 			arguments->step = atoi( arg );
 			break;
-		// --channel can be used multiple times and values will be bitwise ANDed to the channels variable
+		// --channel can be used multiple times and values will be bitwise ORed to the channels variable
 		case 'c':
 			if ( atoi( arg ) == -1 )
 				arguments->channels = 0xffff;
