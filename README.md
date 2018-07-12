@@ -13,6 +13,7 @@ See https://github.com/edlins/libPCA9685
 	mkdir build && cd build
 	cmake ..
 	make
+	make install  (as root)
 
 ## USAGE
 ```
