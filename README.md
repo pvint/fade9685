@@ -1,6 +1,6 @@
 # fade9685 
 
-Basic CLI application for controlling LEDs over I2C on a Raspberyy Pi or similar device
+Basic CLI application for controlling LEDs over I2C on a Raspbery Pi or similar device
 (Most testing is being done with a Pi Zero Wireless)
 
 
@@ -48,6 +48,17 @@ To fade outputs to a certain luminosity level (0-100%): ** this might change in 
 ```
 ./fade9685 -b 1 -a 0x41 -c 0 -c 3 -c 14 -c 15 -l 40
 ```
+
+Fading to accurate amounts with a float is OK too:
+```
+./fade9685 -b 1 -a 0x41 -c 3 -l 0.6
+```
+
+To fade all outputs to a desired level use -c -1:
+```
+./fade9685 -b 1 -a 0x41 -c -1 -l 90
+```
+
 Note that when fading outputs you can control the fade rate with -s
 
 -s 30 or so gives a nice rate with a Pi Zero W.
