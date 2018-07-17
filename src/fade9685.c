@@ -16,6 +16,10 @@
 
 #include <PCA9685.h>
 
+#define fade9685_VERSION_MAJOR 1
+#define fade9685_VERSION_MINOR 0
+
+
 unsigned int verbose = 0;
 
 int initHardware( unsigned int adpt, unsigned int addr, unsigned int freq, unsigned int reset ) {
@@ -56,6 +60,7 @@ void printLog( char *msg, unsigned int verbose, unsigned int level )
 
 void print_usage( char *name ) 
 {
+	printf("fade9685 Version %d.%d\n", fade9685_VERSION_MAJOR, fade9685_VERSION_MINOR);
 	printf("Usage:\n");
 	printf(" %s [options]\n", name);
 	printf("Options:\n");
