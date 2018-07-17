@@ -236,11 +236,12 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 	unsigned int highestVal;
 	unsigned int lowestChan, highestChan, newSetPoint;
 	int ret;
+	char msg[256];
 	unsigned int currentVals [ _PCA9685_CHANS ];
 
 	unsigned int setOnVals[_PCA9685_CHANS] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-	newSetPoint = luminosityToVal( luminosity );
+	newSetPoint = luminosity;
 	lowestVal = newSetPoint;
 	highestVal = newSetPoint;
 
@@ -304,6 +305,10 @@ int fadePWM( unsigned int fd, unsigned int address, unsigned int channels, float
 					else
 						currentVals[i] = luminosity;
 				}
+
+				snprintf( msg, 256, "Setting channel %d to %d\n", i, currentVals[i]);
+				printLog( msg, verbose, 4 );
+
 			}  // if channels
 			//fprintf ( stderr, "%d\t", currentVals[i]);
 		} // for i
@@ -390,7 +395,7 @@ int main(int argc, char **argv) {
 	// TODO Put proper error checks in
 	frequency = arguments.frequency;
 	dutycycle = arguments.dutycycle;
-	luminosity = arguments.luminosity;
+	luminosity = luminosityToVal( arguments.luminosity );
 	step = arguments.step;
 	channels = arguments.channels;
 	bus = arguments.bus;
