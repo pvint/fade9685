@@ -1,7 +1,9 @@
 # fade9685 
 
-Basic CLI application for controlling LEDs over I2C on a Raspbery Pi or similar device
-(Most testing is being done with a Pi Zero Wireless)
+Basic CLI application for controlling LEDs over I2C on a Raspbery Pi or similar device connected to a PCA9685 device (Like the Adafruit PWM driver board)
+(Most testing is being done with a Pi Zero Wireless). Written in C and designed to be small, light and fast.
+
+I use this along with ha-bridge (https://github.com/bwssytems/ha-bridge) to easily control lighting with my Amazon Alexa device. 
 
 
 ## DEPENDENCIES
@@ -35,7 +37,7 @@ Options:
 ```
 
 ## EXAMPLES
-To reset the device and set frequency:
+To reset the device and set frequency (in the examples, the device is at address 0x41 on bus 1):
 ```
 ./fade9685 -b 1 -a 0x41 -f 1000 -R
 ```
