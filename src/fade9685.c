@@ -69,6 +69,7 @@ void print_usage( char *name )
 	printf("  -f\tFrequency in Hz (24-1526)\n");
 	printf("  -d\tSet Duty Cycle Instantly (0 - 100)\n");
 	printf("  -l\tFade to Luminosity (0 - 100)\n");
+	printf("  -L\tFade to Luminosity (0 - 255)\n");
 	printf("  -r\tMake luminosity human friendly using Rec 709 visual gradient (0 - 100)\n");
 	printf("  -s\tStep (Larger value fades more quickly)\n");
 	printf("  -b\tBus number (default 1)\n");
@@ -93,6 +94,7 @@ static struct argp_option options[] = {
 	{ "frequency", 'f', "FREQUENCY", 0, "Frequency" },
 	{ "dutycycle", 'd', "DUTYCYCLE", 0, "Duty Cycle (%)" },
 	{ "luminosity", 'l', "LUMINOSITY", 0, "Luminosity (0 - 100)" },
+	{ "luminosity8", 'L', "LUMINOSITY8", 0, "Luminosity (0 - 255)" },
 	{ "rec709", 'r', 0, 0, "Use Rec709 to make luminosity eye-friendly" },
 	{ "step", 's', "STEP", 0, "Fade Rate step" },
 	{ "channel", 'c', "CHANNEL", 0, "Channel (0-15 or -1 for all)" },
@@ -134,6 +136,9 @@ static error_t parse_opt ( int key, char *arg, struct argp_state *state )
 			// TODO: Add the human perception adjustment
 			// Do this right... 
 			//arguments->luminosity = arguments->luminosity / 100.0f * 4095;
+			break;
+		case 'L': 
+			arguments->luminosity = atof( arg ) / 2.55;
 			break;
 		case 'r':
 			arguments->rec709 = 1;
