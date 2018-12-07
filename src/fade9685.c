@@ -405,7 +405,10 @@ int main(int argc, char **argv) {
 	// TODO Put proper error checks in
 	frequency = arguments.frequency;
 	dutycycle = arguments.dutycycle;
-	luminosity = luminosityToVal( arguments.luminosity );
+	if ( arguments.luminosity >= 0.0f )
+		luminosity = luminosityToVal( arguments.luminosity );
+	else
+		luminosity = -1.0f;
 	step = arguments.step;
 	channels = arguments.channels;
 	bus = arguments.bus;
@@ -429,6 +432,8 @@ int main(int argc, char **argv) {
 
 	if ( luminosity >= 0.0f )
 	{
+		snprintf( msg, 256, "Setting luminosity to %f", luminosity );
+		printLog( msg, verbose, 5 );
 		ret = fadePWM( fd, address, channels, luminosity, step );
 		exit(1);
 	}
@@ -436,6 +441,8 @@ int main(int argc, char **argv) {
 	if ( dutycycle >= 0.0f )
 	{
 		// When setting duty cycle, set instantly
+		snprintf( msg, 256, "Setting duty cycle to %f", dutycycle );
+		printLog( msg, verbose, 5 );
 		ret = setDutyCycle( fd, address, channels, dutycycle );
 		exit(0);
 	}
